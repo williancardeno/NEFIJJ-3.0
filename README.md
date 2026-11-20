@@ -1,174 +1,39 @@
-﻿# NEFIJJ-3.0
--- ==========================================
--- SCRIPT COMPLETO Y CRUD DE SEDES Y ESTUDIANTES - NEFIJJ
--- ==========================================
+# NEFIJJ 3.0
 
-CREATE DATABASE IF NOT EXISTS nefijj_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE nefijj_db;
+NEFIJJ es una aplicación móvil y una API para reportar, asignar y dar seguimiento a incidencias de infraestructura y operación en instituciones con varias organizaciones y sedes.
 
--- Desactivar restricciones de claves foráneas para reconstrucción limpia
-SET FOREIGN_KEY_CHECKS = 0;
+## Estado del proyecto
 
-DROP TABLE IF EXISTS incidents_incident;
-DROP TABLE IF EXISTS incidents_category;
-DROP TABLE IF EXISTS accounts_organizationinvitation;
-DROP TABLE IF EXISTS accounts_organizationmembership;
-DROP TABLE IF EXISTS accounts_user;
-DROP TABLE IF EXISTS accounts_location;
-DROP TABLE IF EXISTS accounts_organization;
+El repositorio contiene una app React Native/Expo y una API Django REST Framework. El código incluye autenticación, gestión de organizaciones, sedes, personal, categorías, invitaciones QR, reportes con evidencia y cambios de estado con permisos por rol. Esto describe funciones presentes en el código; no equivale a una certificación de funcionamiento en producción. La validación física con Expo Go y la operación sobre la base MySQL existente están pendientes.
 
-SET FOREIGN_KEY_CHECKS = 1;
+**No ejecutes `manage.py migrate` en `nefijj_db` ni uses un script SQL de reconstrucción sin revisar antes el esquema y aprobar un plan.** La base local se describe como legado y las migraciones de invitaciones y enrutamiento aún no se han aplicado allí. El SQL destructivo que antes estaba incluido en este README se retiró para evitar que se confunda con instrucciones de instalación.
 
--- ==========================================
--- 1. TABLA: Organización
--- ==========================================
-CREATE TABLE accounts_organization (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(180) NOT NULL,
-    slug VARCHAR(180) NOT NULL UNIQUE,
-    status VARCHAR(20) NOT NULL,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+## Documentación
 
--- ==========================================
--- 2. TABLA: Sede (Location) - CRUD Completo de Sedes
--- ==========================================
-CREATE TABLE accounts_location (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    organization_id INT NOT NULL,
-    name VARCHAR(150) NOT NULL,
-    code VARCHAR(30) NOT NULL UNIQUE,
-    is_active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME(6) NOT NULL,
-    FOREIGN KEY (organization_id) REFERENCES accounts_organization(id) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+- [Problemática y solución](problematica_y_solucion.md): necesidad atendida, usuarios y alcance.
+- [PRD y propuesta](prd_y_propuesta_del_proyecto.md): requisitos y objetivos del producto.
+- [Arquitectura y diagramas](diagramas_del_sistema.md): componentes, entidades y flujos.
+- [Arquitectura del sistema](arquitectura_del_sistema.md): decisiones de despliegue, datos, roles y API.
+- [Manual de usuario](manual_usuario.md): instrucciones de uso por rol.
+- [Libreto de presentación](libreto_presentacion.md): guion para exponer y defender el proyecto.
+- [Diagnóstico y brechas](diagnostico_y_brechas.md): estado documental y funcional conocido, límites y pendientes.
+- [Plan de pruebas y validación](Plan%20de%20Pruebas%20y%20Validaci%C3%B3n.md): casos de aceptación definidos; CP08 físico pendiente.
+- [Tareas del proyecto](TASKS.md): fases registradas y trabajo pendiente.
+- [Decisiones técnicas](DECISIONS.md): decisiones vigentes del proyecto.
+- [Guía de desarrollo backend](Gu%C3%ADa%20de%20Desarrollo%20Backend.md) y [guía móvil](Gu%C3%ADa%20de%20Desarrollo%20Mobile.md): configuración local y ejecución.
 
--- ==========================================
--- 3. TABLA: Usuario (User) - Soporte para Admin, Técnicos y Estudiantes
--- ==========================================
-CREATE TABLE accounts_user (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    password VARCHAR(128) NOT NULL,
-    last_login DATETIME(6) NULL,
-    is_superuser TINYINT(1) NOT NULL DEFAULT 0,
-    username VARCHAR(150) NOT NULL UNIQUE,
-    first_name VARCHAR(150) NOT NULL,
-    last_name VARCHAR(150) NOT NULL,
-    email VARCHAR(254) NOT NULL UNIQUE,
-    is_staff TINYINT(1) NOT NULL DEFAULT 0,
-    is_active TINYINT(1) NOT NULL DEFAULT 1,
-    date_joined DATETIME(6) NOT NULL,
-    role VARCHAR(20) NOT NULL, -- 'superadmin', 'admin', 'technician', 'student'
-    location_id INT NULL,
-    FOREIGN KEY (location_id) REFERENCES accounts_location(id) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+## Componentes
 
--- ==========================================
--- 4. TABLA: Membresía de Organización
--- ==========================================
-CREATE TABLE accounts_organizationmembership (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    organization_id INT NOT NULL,
-    location_id INT NULL,
-    user_id INT NOT NULL,
-    role VARCHAR(30) NOT NULL,
-    is_active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME(6) NOT NULL,
-    FOREIGN KEY (organization_id) REFERENCES accounts_organization(id) ON DELETE RESTRICT,
-    FOREIGN KEY (location_id) REFERENCES accounts_location(id) ON DELETE RESTRICT,
-    FOREIGN KEY (user_id) REFERENCES accounts_user(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_user_organization_membership (organization_id, user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+- `backend/`: API Django REST Framework, autenticación JWT y persistencia MySQL.
+- `mobile/`: cliente React Native con Expo, interfaz en `App.js` y servicios HTTP bajo `src/services/`.
+- Los archivos `.env` y `.env.local` deben ser locales, no compartirse ni contener credenciales comprometidas.
 
--- ==========================================
--- 5. TABLA: Invitación de Organización
--- ==========================================
-CREATE TABLE accounts_organizationinvitation (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    organization_id INT NOT NULL,
-    token_hash VARCHAR(64) NOT NULL UNIQUE,
-    created_by_id INT NOT NULL,
-    expires_at DATETIME(6) NOT NULL,
-    created_at DATETIME(6) NOT NULL,
-    revoked_at DATETIME(6) NULL,
-    used_at DATETIME(6) NULL,
-    used_by_id INT NULL,
-    FOREIGN KEY (organization_id) REFERENCES accounts_organization(id) ON DELETE RESTRICT,
-    FOREIGN KEY (created_by_id) REFERENCES accounts_user(id) ON DELETE RESTRICT,
-    FOREIGN KEY (used_by_id) REFERENCES accounts_user(id) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+## Inicio local
 
--- ==========================================
--- 6. TABLA: Categoría de Incidencias
--- ==========================================
-CREATE TABLE incidents_category (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    organization_id INT NOT NULL,
-    name VARCHAR(150) NOT NULL,
-    description TEXT NOT NULL,
-    is_active TINYINT(1) NOT NULL DEFAULT 1,
-    FOREIGN KEY (organization_id) REFERENCES accounts_organization(id) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+Consulta las guías de desarrollo antes de iniciar los servicios. En resumen, se requiere Python y dependencias del backend, Node.js/npm y dependencias móviles, MySQL/MariaDB local compatible y una IP LAN alcanzable desde el teléfono. Configura `backend/.env` y `mobile/.env.local` a partir de los ejemplos disponibles (si existen), establece la URL LAN de la API y arranca el servidor Django en `0.0.0.0:8000`; luego inicia Expo usando el script `start:lan` de `mobile/package.json`.
 
--- ==========================================
--- 7. TABLA: Incidencias
--- ==========================================
-CREATE TABLE incidents_incident (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    priority VARCHAR(50) NOT NULL,
-    evidence_image VARCHAR(100) NULL,
-    category_id INT NOT NULL,
-    location_id INT NOT NULL,
-    organization_id INT NOT NULL,
-    reported_by_id INT NOT NULL,
-    assigned_to_id INT NULL,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NOT NULL,
-    FOREIGN KEY (category_id) REFERENCES incidents_category(id) ON DELETE RESTRICT,
-    FOREIGN KEY (location_id) REFERENCES accounts_location(id) ON DELETE RESTRICT,
-    FOREIGN KEY (organization_id) REFERENCES accounts_organization(id) ON DELETE RESTRICT,
-    FOREIGN KEY (reported_by_id) REFERENCES accounts_user(id) ON DELETE RESTRICT,
-    FOREIGN KEY (assigned_to_id) REFERENCES accounts_user(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+No se incluyen credenciales predeterminadas. Se necesita una cuenta previamente provisionada. La recuperación de contraseña no está implementada. Para hacer funcionar en MySQL las funciones que dependen de las nuevas tablas se debe revisar y aprobar primero la compatibilidad de migraciones con la base concreta.
 
+## Alcance
 
--- ==========================================
--- DATOS INICIALES Y PRUEBAS DE CRUD
--- ==========================================
-
--- 1. Organización Principal
-INSERT INTO accounts_organization (id, name, slug, status, created_at, updated_at) VALUES
-(1, 'Universidad de La Guajira', 'uniguajira', 'active', NOW(), NOW());
-
--- 2. Sedes (CREATE / READ / UPDATE / DELETE base)
-INSERT INTO accounts_location (id, organization_id, name, code, is_active, created_at) VALUES
-(1, 1, 'Sede Principal Maicao', 'MAI-01', 1, NOW()),
-(2, 1, 'Sede Riohacha', 'RIO-01', 1, NOW()),
-(3, 1, 'Sede Fonseca', 'FON-01', 1, NOW());
-
--- 3. Usuarios y Estudiantes (Gestión completa de perfiles)
-INSERT INTO accounts_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined, role, location_id) VALUES
-(1, 'pbkdf2_sha256$600000$dummyhash$admin', NULL, 0, 'admin_guajira', 'Carlos', 'Admin', 'admin@uniguajira.edu.co', 1, 1, NOW(), 'admin', NULL),
-(2, 'pbkdf2_sha256$600000$dummyhash$tec', NULL, 0, 'tecnico_mai', 'Juan', 'Técnico', 'tecnico@uniguajira.edu.co', 0, 1, NOW(), 'technician', 1),
-(3, 'pbkdf2_sha256$600000$dummyhash$est1', NULL, 0, 'estudiante_mai', 'María', 'Estudiante', 'maria@uniguajira.edu.co', 0, 1, NOW(), 'student', 1),
-(4, 'pbkdf2_sha256$600000$dummyhash$est2', NULL, 0, 'estudiante_rio', 'Pedro', 'Pérez', 'pedro.perez@uniguajira.edu.co', 0, 1, NOW(), 'student', 2); -- Nuevo estudiante registrado en sede Riohacha
-
--- 4. Membresías asociadas
-INSERT INTO accounts_organizationmembership (organization_id, location_id, user_id, role, is_active, created_at) VALUES
-(1, NULL, 1, 'organization_admin', 1, NOW()),
-(1, 1, 2, 'technician', 1, NOW()),
-(1, 1, 3, 'user', 1, NOW()),
-(1, 2, 4, 'user', 1, NOW());
-
--- 5. Categorías e Incidencias iniciales
-INSERT INTO incidents_category (id, organization_id, name, description, is_active) VALUES 
-(1, 1, 'Infraestructura', 'Daños físicos a las instalaciones o mobiliario', 1),
-(2, 1, 'Tecnología', 'Fallas en equipos de cómputo y redes', 1);
-
-INSERT INTO incidents_incident (title, description, status, priority, evidence_image, category_id, location_id, organization_id, reported_by_id, assigned_to_id, created_at, updated_at) VALUES
-('Aire acondicionado dañado', 'El aire del salón 302 no enfría.', 'pendiente', 'media', NULL, 1, 1, 1, 3, NULL, NOW(), NOW()),
-('Falla de conectividad Wi-Fi', 'Sin internet en laboratorio.', 'en_proceso', 'alta', NULL, 2, 1, 1, 3, 2, NOW(), NOW());
+NEFIJJ es una solución de gestión y trazabilidad de incidencias. No es un sistema de emergencias ni garantiza atención en tiempo real. Protocolos operativos y alertas automáticas están pendientes según el estado documentado.

@@ -23,3 +23,21 @@
 [ ] Pendiente: Definir e implementar un mecanismo verificado de recuperación de contraseña.
 
 [ ] Pendiente: Revisar y aprobar por separado el plan de migración de Django Admin para `nefijj_db`.
+
+## Entregables documentales de la revisión académica
+
+[x] README con descripción del proyecto, estado y directorio de documentación; retirado el SQL destructivo del README.
+
+[x] Problemática, solución propuesta, usuarios objetivo y límites del alcance.
+
+[x] Diagramas de arquitectura, modelo conceptual, ciclo de atención e invitación QR.
+
+[x] Manual de usuario organizado por rol y problemas frecuentes.
+
+[x] Libreto de presentación con demo sugerida, estado real y preguntas previsibles.
+
+[x] Diagnóstico de brechas que diferencia código presente, pruebas registradas y validaciones pendientes.
+
+[ ] Validar en dispositivo físico los flujos del CP08 y registrar resultados reales.
+
+[ ] Revisar y aplicar las migraciones necesarias a MySQL solo después de respaldar, validar compatibilidad y aprobar el plan.
